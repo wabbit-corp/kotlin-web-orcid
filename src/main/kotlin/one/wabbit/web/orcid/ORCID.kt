@@ -1,40 +1,44 @@
-//package web.orcid
+// package web.orcid
 //
-//import io.ktor.client.*
-//import io.ktor.client.call.*
-//import io.ktor.client.engine.cio.*
-//import io.ktor.client.request.*
-//import io.ktor.client.request.forms.*
-//import io.ktor.http.*
-//import io.ktor.http.headers
-//import kotlinx.serialization.Serializable
-//import kotlinx.serialization.json.JsonObject
-//import kotlinx.serialization.json.jsonPrimitive
+// import io.ktor.client.*
+// import io.ktor.client.call.*
+// import io.ktor.client.engine.cio.*
+// import io.ktor.client.request.*
+// import io.ktor.client.request.forms.*
+// import io.ktor.http.*
+// import io.ktor.http.headers
+// import kotlinx.serialization.Serializable
+// import kotlinx.serialization.json.JsonObject
+// import kotlinx.serialization.json.jsonPrimitive
 //
-//// https://github.com/ropensci-archive/rorcid/blob/master/README-not.md
-//// https://github.com/ORCID/python-orcid
-//// https://github.com/ORCID/orcid-model
-//// https://github.com/scholrly/orcid-python
-//// https://github.com/vdmitriyev/orcidpyclient
-//// https://github.com/lizkrznarich/orcid-search
-//// https://github.com/sri0606/PyOrcid
+// // https://github.com/ropensci-archive/rorcid/blob/master/README-not.md
+// // https://github.com/ORCID/python-orcid
+// // https://github.com/ORCID/orcid-model
+// // https://github.com/scholrly/orcid-python
+// // https://github.com/vdmitriyev/orcidpyclient
+// // https://github.com/lizkrznarich/orcid-search
+// // https://github.com/sri0606/PyOrcid
 //
-//const val SEARCH_VERSION = "/v2.0"
-//const val VERSION = "/v2.0"
+// const val SEARCH_VERSION = "/v2.0"
+// const val VERSION = "/v2.0"
 //
-//@Serializable
-//data class PublicAPI(
+// @Serializable
+// data class PublicAPI(
 //    val institutionKey: String,
 //    val institutionSecret: String,
 //    val sandbox: Boolean = false,
 //    val timeout: Double? = null,
 //    val doStoreRawResponse: Boolean = false
-//) {
+// ) {
 //    private val host = if (sandbox) "sandbox.orcid.org" else "orcid.org"
-//    private val loginOrRegisterEndpoint = if (sandbox) "https://sandbox.orcid.org/oauth/authorize" else "https://orcid.org/oauth/authorize"
-//    private val loginUrl = if (sandbox) "https://sandbox.orcid.org/oauth/custom/login.json" else "https://orcid.org/oauth/custom/login.json"
-//    private val tokenUrl = if (sandbox) "https://api.sandbox.orcid.org/oauth/token" else "https://api.orcid.org/oauth/token"
-//    private val endpoint = if (sandbox) "https://pub.sandbox.orcid.org" else "https://pub.orcid.org"
+//    private val loginOrRegisterEndpoint = if (sandbox) "https://sandbox.orcid.org/oauth/authorize"
+// else "https://orcid.org/oauth/authorize"
+//    private val loginUrl = if (sandbox) "https://sandbox.orcid.org/oauth/custom/login.json" else
+// "https://orcid.org/oauth/custom/login.json"
+//    private val tokenUrl = if (sandbox) "https://api.sandbox.orcid.org/oauth/token" else
+// "https://api.orcid.org/oauth/token"
+//    private val endpoint = if (sandbox) "https://pub.sandbox.orcid.org" else
+// "https://pub.orcid.org"
 //
 //    private val client = HttpClient(CIO)
 //
@@ -59,8 +63,11 @@
 //        accessToken: String? = null
 //    ): JsonObject {
 //        val token = accessToken ?: getSearchTokenFromOrcid()
-//        val headers = headersOf("Accept" to "application/orcid+json", "Authorization" to "Bearer $token")
-//        val response = client.get("$endpoint$SEARCH_VERSION/search/?defType=$method&q=$query${start?.let { "&start=$it" } ?: ""}${rows?.let { "&rows=$it" } ?: ""}") {
+//        val headers = headersOf("Accept" to "application/orcid+json", "Authorization" to "Bearer
+// $token")
+//        val response =
+// client.get("$endpoint$SEARCH_VERSION/search/?defType=$method&q=$query${start?.let { "&start=$it"
+// } ?: ""}${rows?.let { "&rows=$it" } ?: ""}") {
 //            headers(headers)
 //        }
 //        return response.body()
@@ -140,4 +147,4 @@
 //            headers(headers)
 //        }
 //    }
-//}
+// }
