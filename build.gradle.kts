@@ -32,6 +32,8 @@ publishing {
 }
 
 dependencies {
+    implementation("one.wabbit:kotlin-web-common:1.1.0")
+
     testImplementation(kotlin("test"))
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.9.0")
@@ -42,6 +44,7 @@ dependencies {
     implementation("io.ktor:ktor-client-content-negotiation:3.3.0")
     implementation("io.ktor:ktor-client-serialization:3.3.0")
     implementation("io.ktor:ktor-client-auth:3.3.0")
+    implementation("io.ktor:ktor-client-encoding:3.3.0")
 }
 
 java {
