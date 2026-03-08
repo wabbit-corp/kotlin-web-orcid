@@ -3,19 +3,17 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 repositories {
     mavenCentral()
-
-    maven("https://jitpack.io")
 }
 
 group   = "one.wabbit"
 version = "0.1.0"
 
 plugins {
-    kotlin("jvm") version "2.2.20"
-    id("org.jetbrains.dokka") version "2.0.0"
-    id("org.jetbrains.kotlinx.kover") version "0.9.1"
+    kotlin("jvm")
+    id("org.jetbrains.dokka")
+    id("org.jetbrains.kotlinx.kover")
 
-    kotlin("plugin.serialization") version "2.2.20"
+    kotlin("plugin.serialization")
 
     id("maven-publish")
 }
@@ -32,7 +30,7 @@ publishing {
 }
 
 dependencies {
-    implementation("one.wabbit:kotlin-web-common:1.1.0")
+    implementation(project(":kotlin-web-common")) // 1.1.0
 
     testImplementation(kotlin("test"))
 
@@ -67,7 +65,9 @@ tasks {
     withType<KotlinCompile> {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_21)
-            freeCompilerArgs.add("-Xcontext-receivers")
+
+            freeCompilerArgs.add("-Xcontext-parameters")
+
         }
     }
 
