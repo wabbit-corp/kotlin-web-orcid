@@ -1,101 +1,216 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 
 repositories {
+    google()
+
     mavenCentral()
 
     maven("https://jitpack.io")
 }
 
-group   = "one.wabbit"
+group = "one.wabbit"
 version = "0.1.0"
 
 plugins {
-    kotlin("jvm")
-    id("org.jetbrains.dokka")
-    id("org.jetbrains.kotlinx.kover")
+    id("com.android.kotlin.multiplatform.library")
+
+    kotlin("multiplatform")
 
     kotlin("plugin.serialization")
 
+    id("org.jetbrains.dokka")
+    id("org.jetbrains.kotlinx.kover")
     id("maven-publish")
+
+    id("com.vanniktech.maven.publish")
 }
 
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            groupId = "one.wabbit"
-            artifactId = "kotlin-web-orcid"
-            version = "0.1.0"
-            from(components["java"])
+mavenPublishing {
+    coordinates("one.wabbit", "kotlin-web-orcid", "0.1.0")
+    publishToMavenCentral()
+    signAllPublications()
+    pom {
+        name.set("kotlin-web-orcid")
+        description.set("kotlin-web-orcid")
+        url.set("https://github.com/wabbit-corp/kotlin-web-orcid")
+        licenses {
+            license {
+                name.set("GNU Affero General Public License v3.0 or later")
+                url.set("https://spdx.org/licenses/AGPL-3.0-or-later.html")
+            }
+        }
+        developers {
+            developer {
+                id.set("wabbit-corp")
+                name.set("Wabbit Consulting Corporation")
+
+                email.set("wabbit@wabbit.one")
+
+            }
+        }
+        scm {
+            url.set("https://github.com/wabbit-corp/kotlin-web-orcid")
+            connection.set("scm:git:git://github.com/wabbit-corp/kotlin-web-orcid.git")
+            developerConnection.set("scm:git:ssh://git@github.com/wabbit-corp/kotlin-web-orcid.git")
         }
     }
 }
 
-dependencies {
-    implementation("one.wabbit:kotlin-web-common:1.1.0")
+val localPublishRequested =
+    gradle.startParameter.taskNames.any { taskName -> "MavenLocal" in taskName }
 
-    testImplementation(kotlin("test"))
-
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.9.0")
-
-    implementation("io.ktor:ktor-serialization-kotlinx-json:3.3.0")
-    implementation("io.ktor:ktor-client-core:3.3.0")
-    implementation("io.ktor:ktor-client-cio:3.3.0")
-    implementation("io.ktor:ktor-client-content-negotiation:3.3.0")
-    implementation("io.ktor:ktor-client-serialization:3.3.0")
-    implementation("io.ktor:ktor-client-auth:3.3.0")
-    implementation("io.ktor:ktor-client-encoding:3.3.0")
+if (localPublishRequested) {
+    tasks.withType<org.gradle.plugins.signing.Sign>().configureEach {
+        enabled = false
+    }
 }
 
-java {
-    targetCompatibility = JavaVersion.toVersion(21)
-    sourceCompatibility = JavaVersion.toVersion(21)
-}
-
-tasks {
-    withType<Test> {
-        jvmArgs("-ea")
+kotlin {
+    jvmToolchain(21)
+    compilerOptions {
+        freeCompilerArgs.add("-Xcontext-parameters")
 
     }
-    withType<JavaCompile> {
-        options.encoding = Charsets.UTF_8.name()
-    }
-    withType<Javadoc> {
-        options.encoding = Charsets.UTF_8.name()
-    }
+    applyDefaultHierarchyTemplate()
 
-    withType<KotlinCompile> {
+    jvm {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_21)
-
-            freeCompilerArgs.add("-Xcontext-parameters")
-
+        }
+        testRuns["test"].executionTask.configure {
+            jvmArgs("-ea")
         }
     }
 
-    jar {
-        setProperty("zip64", true)
+    androidLibrary {
+        namespace = "one.wabbit.web.orcid"
+        compileSdk = 34
+        minSdk = 26
+    }
+
+    iosArm64()
+
+    iosSimulatorArm64()
+
+    macosArm64("hostNative")
+
+    listOf(
+
+        targets.getByName("iosArm64"),
+
+        targets.getByName("iosSimulatorArm64"),
+
+        targets.getByName("hostNative"),
+
+    ).forEach { target ->
+        (target as KotlinNativeTarget).binaries.framework {
+            baseName = "WebOrcid"
+            isStatic = true
+        }
+    }
+
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                implementation("one.wabbit:kotlin-web-common:1.2.0")
+
+                implementation("io.ktor:ktor-client-core:3.3.0")
+
+                implementation("io.ktor:ktor-client-content-negotiation:3.3.0")
+
+                implementation("io.ktor:ktor-client-serialization:3.3.0")
+
+                implementation("io.ktor:ktor-client-auth:3.3.0")
+
+                implementation("io.ktor:ktor-client-encoding:3.3.0")
+
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.9.0")
+
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+
+            }
+
+        }
+
+        val commonTest by getting {
+            dependencies {
+                implementation("org.jetbrains.kotlin:kotlin-test:2.3.10")
+
+            }
+
+        }
+
+        val jvmMain by getting {
+            dependencies {
+                implementation("io.ktor:ktor-client-cio:3.3.0")
+
+            }
+
+        }
+
+        val androidMain by getting {
+            dependencies {
+                implementation("io.ktor:ktor-client-okhttp:3.3.0")
+
+            }
+
+        }
+
+        val appleMain by getting {
+            dependencies {
+                implementation("io.ktor:ktor-client-darwin:3.3.0")
+
+            }
+
+        }
 
     }
 }
 
-// Kover Configuration
-kover {
-    // useJacoco() // This is the default, can be specified if you want to be explicit
-    // reports {
-    //     // Configure reports for the default test task.
-    //     // Kover tries to infer the variant for simple JVM projects.
-    //     // If you have specific build types/flavors, you'd configure them here as variants.
-    //     variant() { // Or remove "debug" for a default JVM setup unless you have variants
-    //         html {
-    //             // reportDir.set(layout.buildDirectory.dir("reports/kover/html")) // Uncomment to customize output
-    //             // title.set("kotlin-web-orcid Code Coverage") // Uncomment to customize title
-    //         }
-    //         xml {
-    //             // reportFile.set(layout.buildDirectory.file("reports/kover/coverage.xml")) // Uncomment to customize output
-    //         }
-    //     }
-    // }
+val configuredVersionString = version.toString()
+
+tasks.register("printVersion") {
+    inputs.property("configuredVersion", configuredVersionString)
+    doLast {
+        println(inputs.properties["configuredVersion"])
+    }
+}
+
+tasks.register("assertReleaseVersion") {
+    inputs.property("configuredVersion", configuredVersionString)
+    doLast {
+        val versionString = inputs.properties["configuredVersion"].toString()
+        require(!versionString.endsWith("+dev-SNAPSHOT")) {
+            "Release publishing requires a non-snapshot version, got $versionString"
+        }
+        val refType = System.getenv("GITHUB_REF_TYPE") ?: ""
+        val refName = System.getenv("GITHUB_REF_NAME") ?: ""
+        if (refType == "tag" && refName.isNotBlank()) {
+            val expectedTag = "v$versionString"
+            require(refName == expectedTag) {
+                "Git tag $refName does not match project version $versionString"
+            }
+        }
+    }
+}
+
+tasks.register("assertSnapshotVersion") {
+    inputs.property("configuredVersion", configuredVersionString)
+    doLast {
+        val versionString = inputs.properties["configuredVersion"].toString()
+        require(versionString.endsWith("+dev-SNAPSHOT")) {
+            "Snapshot publishing requires a +dev-SNAPSHOT version, got $versionString"
+        }
+        require((System.getenv("GITHUB_REF_TYPE") ?: "") != "tag") {
+            "Snapshot publishing must not run from a tag ref"
+        }
+    }
+}
+
+tasks.withType<Test>().configureEach {
+    jvmArgs("-ea")
 }
 
 dokka {
@@ -104,19 +219,24 @@ dokka {
         suppressInheritedMembers.set(true)
         failOnWarning.set(true)
     }
-    dokkaSourceSets.main {
-        // includes.from("README.md")
+
+    dokkaSourceSets.configureEach {
+        if (name == "commonMain") {
+            val dokkaModuleFile = file("docs/dokka-module.md")
+            if (dokkaModuleFile.exists()) {
+                includes.from(dokkaModuleFile)
+            }
+        }
 
         sourceLink {
-            localDirectory.set(file("src/main/kotlin"))
-            remoteUrl("https://github.com/wabbit-corp/kotlin-web-orcid/tree/master/src/main/kotlin")
+            localDirectory.set(file("src"))
+            remoteUrl("https://github.com/wabbit-corp/kotlin-web-orcid/tree/master/src")
             remoteLineSuffix.set("#L")
         }
 
     }
+
     pluginsConfiguration.html {
-        // customStyleSheets.from("styles.css")
-        // customAssets.from("logo.png")
         footerMessage.set("(c) Wabbit Consulting Corporation")
     }
 }
