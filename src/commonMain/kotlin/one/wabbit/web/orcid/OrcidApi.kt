@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 @file:OptIn(ExperimentalTime::class)
 
 package one.wabbit.web.orcid
@@ -19,6 +21,10 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.URLBuilder
 import io.ktor.http.encodeURLPathPart
 import io.ktor.http.isSuccess
+import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.ExperimentalTime
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -31,13 +37,8 @@ import one.wabbit.web.common.Schedule
 import one.wabbit.web.common.Timeouts
 import one.wabbit.web.common.applyEtiquette
 import one.wabbit.web.common.applyTimeouts
+import one.wabbit.web.common.consumeRawBodyPrefixUtf8
 import one.wabbit.web.common.runWithRetry
-import one.wabbit.web.common.safeBodyPrefix
-import kotlin.coroutines.cancellation.CancellationException
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.ExperimentalTime
 
 sealed class OrcidError(message: String, cause: Throwable? = null) : Exception(message, cause) {
     class Http(val url: String, val status: Int, val bodySample: String?) :
@@ -51,7 +52,7 @@ sealed class OrcidError(message: String, cause: Throwable? = null) : Exception(m
                     append(", body sample: ")
                     append(bodySample.take(256))
                 }
-            },
+            }
         )
 
     class Network(val url: String, cause: Throwable) :
@@ -76,9 +77,7 @@ interface OrcidApi {
         val retryPolicy: OrcidRetryPolicy? = defaultOrcidRetryPolicy(),
     ) {
         init {
-            require(apiVersion.matches(Regex("""v\d+\.\d+"""))) {
-                "apiVersion must look like v3.0"
-            }
+            require(apiVersion.matches(Regex("""v\d+\.\d+"""))) { "apiVersion must look like v3.0" }
         }
 
         val oauthBaseUrl: String
@@ -118,19 +117,14 @@ interface OrcidApi {
         MEMBER,
     }
 
-    data class ClientCredentials(
-        val clientId: String,
-        val clientSecret: String,
-    ) {
+    data class ClientCredentials(val clientId: String, val clientSecret: String) {
         init {
             require(clientId.isNotBlank()) { "clientId must not be blank" }
             require(clientSecret.isNotBlank()) { "clientSecret must not be blank" }
         }
     }
 
-    data class Scope(
-        val value: String,
-    ) {
+    data class Scope(val value: String) {
         init {
             require(value.startsWith("/")) { "scope must start with '/'" }
         }
@@ -192,15 +186,11 @@ interface OrcidApi {
     }
 
     @Serializable
-    data class OrcidIdentifier(
-        val uri: String? = null,
-        val path: String,
-        val host: String? = null,
-    )
+    data class OrcidIdentifier(val uri: String? = null, val path: String, val host: String? = null)
 
     @Serializable
     data class SearchResultItem(
-        @SerialName("orcid-identifier") val orcidIdentifier: OrcidIdentifier,
+        @SerialName("orcid-identifier") val orcidIdentifier: OrcidIdentifier
     )
 
     @Serializable
@@ -261,10 +251,7 @@ interface OrcidApi {
         redirectUri: String,
     ): AccessToken
 
-    suspend fun search(
-        request: SearchRequest,
-        accessToken: String? = null,
-    ): SearchResponse
+    suspend fun search(request: SearchRequest, accessToken: String? = null): SearchResponse
 
     suspend fun expandedSearch(
         request: SearchRequest,
@@ -336,18 +323,17 @@ class KtorOrcidApi(
     override suspend fun fetchClientCredentialsToken(
         credentials: OrcidApi.ClientCredentials,
         scope: OrcidApi.Scope,
-    ): OrcidApi.AccessToken =
-        withRetry {
-            val url = config.tokenEndpoint()
-            val body =
-                postForm(url) {
-                    append("client_id", credentials.clientId)
-                    append("client_secret", credentials.clientSecret)
-                    append("grant_type", "client_credentials")
-                    append("scope", scope.value)
-                }
-            decode(url, body)
-        }
+    ): OrcidApi.AccessToken = withRetry {
+        val url = config.tokenEndpoint()
+        val body =
+            postForm(url) {
+                append("client_id", credentials.clientId)
+                append("client_secret", credentials.clientSecret)
+                append("grant_type", "client_credentials")
+                append("scope", scope.value)
+            }
+        decode(url, body)
+    }
 
     override suspend fun exchangeAuthorizationCode(
         credentials: OrcidApi.ClientCredentials,
@@ -374,52 +360,43 @@ class KtorOrcidApi(
     override suspend fun search(
         request: OrcidApi.SearchRequest,
         accessToken: String?,
-    ): OrcidApi.SearchResponse =
-        withRetry {
-            ensureAccessTokenIfRequired(accessToken)
-            val url = buildResourceUrl("search")
-            val body =
-                getText(url, accessToken) {
-                    accept(ORCID_JSON)
-                    parameter("q", request.query)
-                    request.start?.let { parameter("start", it) }
-                    request.rows?.let { parameter("rows", it) }
-                    request.queryParser?.let { parameter("defType", it) }
-                }
-            decode(url, body)
-        }
+    ): OrcidApi.SearchResponse = withRetry {
+        ensureAccessTokenIfRequired(accessToken)
+        val url = buildResourceUrl("search")
+        val body =
+            getText(url, accessToken) {
+                accept(ORCID_JSON)
+                parameter("q", request.query)
+                request.start?.let { parameter("start", it) }
+                request.rows?.let { parameter("rows", it) }
+                request.queryParser?.let { parameter("defType", it) }
+            }
+        decode(url, body)
+    }
 
     override suspend fun expandedSearch(
         request: OrcidApi.SearchRequest,
         accessToken: String?,
-    ): OrcidApi.ExpandedSearchResponse =
-        withRetry {
-            ensureAccessTokenIfRequired(accessToken)
-            val url = buildResourceUrl("expanded-search")
-            val body =
-                getText(url, accessToken) {
-                    accept(ORCID_JSON)
-                    parameter("q", request.query)
-                    request.start?.let { parameter("start", it) }
-                    request.rows?.let { parameter("rows", it) }
-                    request.queryParser?.let { parameter("defType", it) }
-                }
-            decode(url, body)
-        }
+    ): OrcidApi.ExpandedSearchResponse = withRetry {
+        ensureAccessTokenIfRequired(accessToken)
+        val url = buildResourceUrl("expanded-search")
+        val body =
+            getText(url, accessToken) {
+                accept(ORCID_JSON)
+                parameter("q", request.query)
+                request.start?.let { parameter("start", it) }
+                request.rows?.let { parameter("rows", it) }
+                request.queryParser?.let { parameter("defType", it) }
+            }
+        decode(url, body)
+    }
 
-    override suspend fun readPath(
-        orcidId: String,
-        path: String,
-        accessToken: String?,
-    ): JsonObject =
+    override suspend fun readPath(orcidId: String, path: String, accessToken: String?): JsonObject =
         withRetry {
             ensureAccessTokenIfRequired(accessToken)
             val canonicalOrcidId = normalizeOrcidId(orcidId)
             val url = buildResourceUrl(canonicalOrcidId, path)
-            val body =
-                getText(url, accessToken) {
-                    accept(ORCID_JSON)
-                }
+            val body = getText(url, accessToken) { accept(ORCID_JSON) }
             decode(url, body)
         }
 
@@ -455,9 +432,9 @@ class KtorOrcidApi(
                     expectSuccess = false
                     applyEtiquette(config.etiquette)
                     applyTimeouts(config.timeouts)
-                    accessToken?.takeIf { it.isNotBlank() }?.let {
-                        header(HttpHeaders.Authorization, "Bearer $it")
-                    }
+                    accessToken
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { header(HttpHeaders.Authorization, "Bearer $it") }
                     block()
                 }
             } catch (t: Throwable) {
@@ -477,7 +454,7 @@ class KtorOrcidApi(
         } else {
             val sample =
                 try {
-                    response.safeBodyPrefix(2048)
+                    response.consumeRawBodyPrefixUtf8(2048)
                 } catch (t: Throwable) {
                     "<failed to read body prefix: ${t::class.simpleName}: ${t.message}>"
                 }
@@ -505,13 +482,10 @@ class KtorOrcidApi(
         }
 
     private fun buildResourceUrl(vararg rawSegments: String): String {
-        val segments =
-            buildList {
-                add(config.apiVersion.trim('/'))
-                rawSegments.forEach { segment ->
-                    addAll(normalizePathSegments(segment))
-                }
-            }
+        val segments = buildList {
+            add(config.apiVersion.trim('/'))
+            rawSegments.forEach { segment -> addAll(normalizePathSegments(segment)) }
+        }
 
         return buildString {
             append(config.resourceBaseUrl.trimEnd('/'))

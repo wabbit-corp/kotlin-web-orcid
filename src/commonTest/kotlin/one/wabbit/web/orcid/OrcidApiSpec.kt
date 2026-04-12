@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Wabbit-Public-Test-License-1.1
+
 @file:OptIn(ExperimentalTime::class)
 
 package one.wabbit.web.orcid
@@ -22,8 +24,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlinx.coroutines.test.runTest
 import kotlin.time.ExperimentalTime
+import kotlinx.coroutines.test.runTest
 
 class OrcidApiSpec {
     @Test
@@ -38,7 +40,7 @@ class OrcidApiSpec {
                     scopes = listOf(OrcidApi.Scope.OPENID, OrcidApi.Scope.AUTHENTICATE),
                     state = "opaque-state",
                     additionalParameters = mapOf("lang" to "en"),
-                ),
+                )
             )
 
         assertTrue(url.startsWith("https://orcid.org/oauth/authorize?"))
@@ -66,17 +68,15 @@ class OrcidApiSpec {
                   "expires_in": 631138518,
                   "scope": "/read-public"
                 }
-                """.trimIndent(),
+                """
+                    .trimIndent()
             )
         }
 
         val api = KtorOrcidApi(client)
         val token =
             api.fetchClientCredentialsToken(
-                OrcidApi.ClientCredentials(
-                    clientId = "client-id",
-                    clientSecret = "client-secret",
-                ),
+                OrcidApi.ClientCredentials(clientId = "client-id", clientSecret = "client-secret")
             )
 
         assertEquals("token-123", token.accessToken)
@@ -114,7 +114,8 @@ class OrcidApiSpec {
                     }
                   ]
                 }
-                """.trimIndent(),
+                """
+                    .trimIndent(),
                 contentType = "application/vnd.orcid+json",
             )
         }
@@ -127,7 +128,7 @@ class OrcidApiSpec {
                     start = 10,
                     rows = 5,
                     queryParser = "lucene",
-                ),
+                )
             )
 
         assertEquals(1, response.numFound)
@@ -147,27 +148,26 @@ class OrcidApiSpec {
                   "path": "0000-0002-1825-0097",
                   "last-modified-date": {"value": 1494016313820}
                 }
-                """.trimIndent(),
+                """
+                    .trimIndent(),
                 contentType = "application/vnd.orcid+json",
             )
         }
 
-        val api =
-            KtorOrcidApi(
-                client,
-                config = OrcidApi.Config(apiTier = OrcidApi.ApiTier.MEMBER),
-            )
+        val api = KtorOrcidApi(client, config = OrcidApi.Config(apiTier = OrcidApi.ApiTier.MEMBER))
 
         val json = api.readPath("0000-0002-1825-0097", "works/12345", accessToken = "secret-token")
         assertEquals("0000-0002-1825-0097", json["path"]?.toString()?.trim('"'))
     }
 
-    private fun testClient(handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData): HttpClient =
-        HttpClient(MockEngine(handler)) {
-            install(HttpTimeout)
-        }
+    private fun testClient(
+        handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData
+    ): HttpClient = HttpClient(MockEngine(handler)) { install(HttpTimeout) }
 
-    private fun MockRequestHandleScope.respondJson(body: String, contentType: String = ContentType.Application.Json.toString()) =
+    private fun MockRequestHandleScope.respondJson(
+        body: String,
+        contentType: String = ContentType.Application.Json.toString(),
+    ) =
         respond(
             content = body,
             status = HttpStatusCode.OK,
